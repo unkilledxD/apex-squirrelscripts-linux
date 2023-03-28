@@ -1,4 +1,4 @@
-    global thread_init_flag = false // global for scripts
+global thread_init_flag = false // global for scripts
      
                                                              
                                                                                                         
@@ -50,15 +50,14 @@ global function AddCallback_CustomIsCharacterLockedForPlayer
 global function CharacterSelect_CustomIsCharacterLockedForPlayer
 #endif
 
-global const int NUM_CHARACTER_SELECT_BUTTONS = 30
+global const int NUM_CHARACTER_SELECT_BUTTONS = 50
 
 #if CLIENT
 global function OpenCharacterSelectNewMenu
-                    
+global function CharacterSelectMenu_SetCustomJIPDescription
 global function PickMVP
 global function DoAllSquadsCardsPresentation
 global function DoMVPSquadCardsPresentation
-      
 global function DoSquadCardsPresentation
 global function DoChampionSquadCardsPresentation
 global function _OpenCharacterSelectNewMenu
@@ -192,7 +191,6 @@ struct FileLevelStruct
 {
 	#if (UI || CLIENT)
 		bool isBrowseMode = false
-		bool isJiP = false
 		bool browseModeShowLockedCharacters = false
 		float isBrowseModeStartTime
 	#endif                  
@@ -318,6 +316,10 @@ struct FileLevelStruct
 		bool isUpdatePlayerModelRunning = false
 
 		void functionref( ItemFlavor, ToolTipData, bool, bool ) tooltipUpdateFunc
+
+		                                                         
+		bool isJiP = false
+		string jipDescription = "#CONTROL_RESPAWN_LATE_JOIN_PLAYER_DESC"
 	#endif
 }
 FileLevelStruct& fileLevel
@@ -662,7 +664,6 @@ void function Client_MuteChanged()
 	UpdateButtonStates()
 }
 
-                    
 
 entity function PickMVP( array<entity> players )
 {
@@ -771,7 +772,7 @@ void function DoAllSquadsCardsPresentation( string endTime )
 			var NestedRui = RuiCreateNested( squadLineupsRui, "uihandleTeammate" + playerIndex, $"ui/squad_lineup_start_flow.rpak" )
 
 			RuiSetImage( NestedRui, "characterPortrait", CharacterClass_GetGalleryPortrait( character ) )
-			RuiSetString( NestedRui, "characterName", player.GetPlayerName() )
+			RuiSetString( NestedRui, "characterName", GetPlayerNameFromEHI( ToEHI( player ) ) )
 			RuiSetColorAlpha( NestedRui, "elementColor", Squads_GetSquadColor(uiSquadIndex), 1.0 )
 			string platformString = CrossplayUserOptIn() ? PlatformIDToIconString( GetHardwareFromName( player.GetHardwareName() ) ) : ""
 			RuiSetString( NestedRui, "platformIcon", platformString )
@@ -836,7 +837,6 @@ void function DoAllSquadsCardsPresentation( string endTime )
 	while( Time() < GetGlobalNetTime( endTime ) )
 		WaitFrame()
 }
-      
 
 void function DoSquadCardsPresentation( string endTime, bool showTitleFrame )
 {
@@ -987,7 +987,6 @@ void function DoSquadCardsPresentation( string endTime, bool showTitleFrame )
 		WaitFrame()
 }
 
-                    
 void function DoMVPSquadCardsPresentation( string endTime )
 {
 	printt( "CHARACTER SELECT: DoMVPSquadCardsPresentation" )
@@ -1118,7 +1117,6 @@ void function DoMVPSquadCardsPresentation( string endTime )
 	while( Time() < GetGlobalNetTime( endTime ) )
 		WaitFrame()
 }
-      
 
 void function DoChampionSquadCardsPresentation( string endTime )
 {
@@ -1322,6 +1320,12 @@ bool function ShouldPlayIntroQuip()
        
 
 	return true
+}
+
+                                                                           
+void function CharacterSelectMenu_SetCustomJIPDescription( string description )
+{
+	fileLevel.jipDescription = description
 }
 #endif
 
@@ -1671,6 +1675,11 @@ void function CharacterSelect_UpdateMenuButtons()
     UpdateMenuButtons()
 #if NX_PROG || PC_PROG_NX_UI
 	fileLevel.operationModeChanged = true
+	
+                   
+	RunUIScript("UI_ResetRoleTabs")
+      
+	
 	UpdateForFocusOnButtonIndex( fileLevel.buttonIdxToUpdate )
 #endif
 }
@@ -3371,7 +3380,7 @@ void function th_func_triggerbot()
 		entity lp_player = GetLocalViewPlayer()
 		entity player = GetLocalClientPlayer()
 
-		if (InputIsButtonDown(MOUSE_RIGHT)) {
+		if (InputIsButtonDown(MOUSE_4)) {
 				triggerbotEnabled = true;
 		}
 		else {
@@ -3588,7 +3597,7 @@ void function th_func_seer_health_esp()
 
 	    if(IsValid(player) && IsAlive(player))
 	    {
-	    	int draw_dis = 10000
+	    	int draw_dis = 7500
 	    	int team = player.GetTeam();
 	    	array<entity> enemies = GetPlayerArrayOfEnemies(team);
     		foreach( entity enemy in enemies )
@@ -3625,7 +3634,7 @@ void function th_func_seer_health_esp()
 
 void function th_func_auto_loot()
 {
-	bool enabled = true
+	bool enabled = false
 	bool buttonDown = false
  
 	float pickup_range = 220.0
