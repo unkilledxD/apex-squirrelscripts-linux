@@ -13,6 +13,7 @@ TriggerBot (Usage: On/Off = F4, Activation = Aim/Right mouse button)
 item icon ESP (Usage: Press F3 For On/Off)  
 seer health ESP  
 autoloot (Usage: Press F2 For On/Off)  
+tutorial and orientation matches bypass
   
   
 [Usage]  
