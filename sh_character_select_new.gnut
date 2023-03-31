@@ -3471,14 +3471,14 @@ void function th_func_triggerbot()
 
 					if(sniperSentinel)
 					{
-						wait(0.2)
+						//wait(0.2)
 						player.ClientCommand("+attack");
 						player.ClientCommand("-attack");
 					};
 
 					if(sniperLongbow)
 					{
-						wait(0.2)
+						//wait(0.2)
 						player.ClientCommand("+attack");
 						player.ClientCommand("-attack");
 					};
@@ -3590,35 +3590,47 @@ void function th_func_item_icon_esp()
 
 void function th_func_seer_health_esp()
 {
-
 	while(true)
 	{
 		entity player = GetLocalClientPlayer();
-
+ 
 	    if(IsValid(player) && IsAlive(player))
 	    {
-	    	int draw_dis = 7500
+	    	int draw_dis = 15000
 	    	int team = player.GetTeam();
 	    	array<entity> enemies = GetPlayerArrayOfEnemies(team);
     		foreach( entity enemy in enemies )
     		{
-    			if(IsValid(enemy) && enemy.IsPlayer() && IsAlive(enemy) && enemy != player)
+    			if(IsValid(enemy) && enemy.IsPlayer() && IsAlive(enemy) && enemy != player && !enemy.IsPlayerDecoy())
     			{
     				bool inList = (enemy in player.p.reconScanRUIs);
     				float dis = Distance(player.GetOrigin(), enemy.GetOrigin());
-    				if(!inList)
+    				if(!inList && dis < draw_dis)
     				{
-    					if(dis < draw_dis)
-    					{
-    						ReconScan_ShowHudForTarget(player, enemy, false );
-    					};
+    					var rui = ReconScan_ShowHudForTarget(player, enemy, false);
+						if(rui != null && enemy.IsPlayer())
+						{
+							RuiSetBool ( rui, "showRange", true )
+							RuiSetBool( rui, "isVisible", true )
+						}
     				}
+					else if(dis<draw_dis){
+						enemy.Highlight_SetCurrentContext( HIGHLIGHT_CONTEXT_SONAR )
+						enemy.Highlight_SetVisibilityType( HIGHLIGHT_VIS_ALWAYS )
+						enemy.Highlight_SetFlag( HIGHLIGHT_FLAG_DISABLE_DEATH_FADE, true )
+						enemy.Highlight_SetFlag( HIGHLIGHT_FLAG_TEAM_AGNOSTIC, true )
+						enemy.Highlight_SetFarFadeDist( draw_dis )
+						enemy.Highlight_SetFadeInTime( 0.0 )
+						enemy.Highlight_SetFadeOutTime( 0.0 )
+						enemy.Highlight_StartOn()
+						enemy.Highlight_SetLifeTime(999999)
+					}
     				else if(dis > draw_dis && inList && player.p.reconScanRUIs[enemy] != null)
     				{
     					ReconScan_RemoveHudForTarget(player, enemy);
     				};
     			}
-    			else if(!IsValid(enemy) || !IsAlive(enemy))
+    			else if(IsValid(enemy) && !IsAlive(enemy))
     			{
     				if(enemy in player.p.reconScanRUIs && player.p.reconScanRUIs[enemy] != null)
     				{
@@ -3627,7 +3639,7 @@ void function th_func_seer_health_esp()
     			};
     		};
 	    };
-
+ 
 	    wait 1.0;
 	}
 }
@@ -3846,7 +3858,6 @@ void function th_func_auto_loot()
 	    }
 	}
 }
-
 // Script End
 
 void function UpdateButtonStates()
