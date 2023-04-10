@@ -3409,7 +3409,7 @@ bool function HasLocalPlayerCompletedNewPlayerOrientation()
 
 bool function DoNonlocalPlayerPartyMembersNeedToCompleteNewPlayerOrientation()
 {
-	return false
+	return false	
 	/*if( GetConVarBool( "orientation_matches_disabled" ) )
 		return false
 

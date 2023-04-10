@@ -1,4 +1,4 @@
-global thread_init_flag = false // global for scripts
+ global thread_init_flag = false // global for scripts 
      
                                                              
                                                                                                         
