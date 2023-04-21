@@ -3409,7 +3409,7 @@ bool function HasLocalPlayerCompletedNewPlayerOrientation()
 
 bool function DoNonlocalPlayerPartyMembersNeedToCompleteNewPlayerOrientation()
 {
-	return false	
+	return false
 	/*if( GetConVarBool( "orientation_matches_disabled" ) )
 		return false
 
@@ -4069,7 +4069,7 @@ bool function Lobby_OpenBattlePassMilestoneDialog( bool forceShow = false )
 			if ( currentRow > lastSeenMilestone )
 			{
 				showMilestoneMenu = true
-				Remote_ServerCallFunction( "ClientCallback_MarkBattlePassMilestoneAsSeen", activeBattlePassGUID, currentRow )
+				Remote_ServerCallFunction( "ClientCallback_MarkBattlePassMilestoneAsSeen", currentRow )
 				break
 			}
 		}
@@ -4232,7 +4232,7 @@ bool function Lobby_ShowBattlePassPopup( bool forceShow = false )
 		Lobby_HideCallToActionPopup()
 	}
 
-	thread function() : ( rewardToShow, bpLevel, bpString, markerLevel )
+	thread function() : ( rewardToShow, bpLevel, markerLevel )
 	{
 		EndSignal( uiGlobal.signalDummy, "Lobby_ShowCallToActionPopup" )
 
@@ -4255,7 +4255,7 @@ bool function Lobby_ShowBattlePassPopup( bool forceShow = false )
 			WaitFrame()
 
 		RuiSetGameTime( Hud_GetRui( popup ), "animStartTime", ClientTime() )
-		Remote_ServerCallFunction( "ClientCallback_MarkBattlePassPopupAsSeen", bpString, markerLevel )
+		Remote_ServerCallFunction( "ClientCallback_MarkBattlePassPopupAsSeen", markerLevel )
 		PIN_LobbyPopUp_Event( "battle_pass_pop_up", ePINPromoMessageStatus.IMPRESSION )
 		EmitUISound( SOUND_BP_POPUP )
 		thread CallToActionPopupThink( popup, 10.0 )
@@ -4679,7 +4679,7 @@ bool function Lobby_ShowStoryEventChallengesPopup( bool forceShow = false )
 		array<ItemFlavor> appropriateSpecialEventChallenges = StoryChallengeEvent_GetActiveChallengesForPlayer( event, player )
 		bool hasSeenPopupForSomeChallenges                  = false
 		array<ItemFlavor> activeChallenges
-		array<string> hasSeenPersistenceVarNames
+		array<StoryEventGroupChallengeData> challengeDataForSeenPersistenceVarNames
 
 		foreach ( ItemFlavor challenge in appropriateSpecialEventChallenges )
 		{
@@ -4688,9 +4688,10 @@ bool function Lobby_ShowStoryEventChallengesPopup( bool forceShow = false )
 			{
 				activeChallenges.append( challenge )
 
-				string ornull hasSeenPersistenceVarNameOrNull = StoryChallengeEvent_GetHasChallengesPopupBeenSeenVarNameOrNull( challenge, player )
-				if ( hasSeenPersistenceVarNameOrNull != null && !hasSeenPersistenceVarNames.contains( expect string ( hasSeenPersistenceVarNameOrNull ) ) )
-					hasSeenPersistenceVarNames.append( expect string ( hasSeenPersistenceVarNameOrNull ) )
+				StoryEventGroupChallengeData challengeData = StoryChallengeEvent_GetHasChallengesData( challenge, player )
+				string ornull hasSeenPersistenceVarNameOrNull = challengeData.persistenceVarNameHasSeenOrNull
+				if ( hasSeenPersistenceVarNameOrNull != null && !challengeDataForSeenPersistenceVarNames.contains( challengeData ) )
+					challengeDataForSeenPersistenceVarNames.append( challengeData )
 
 				if ( StoryChallengeEvent_HasChallengesPopupBeenSeen( challenge, player ) )
 					hasSeenPopupForSomeChallenges = true
@@ -4700,7 +4701,7 @@ bool function Lobby_ShowStoryEventChallengesPopup( bool forceShow = false )
 		if ( activeChallenges.len() == 0 )
 			continue
 
-		if ( hasSeenPersistenceVarNames.len() == 0 )
+		if ( challengeDataForSeenPersistenceVarNames.len() == 0 )
 			continue
 
 		                                                                                                 
@@ -4741,7 +4742,7 @@ bool function Lobby_ShowStoryEventChallengesPopup( bool forceShow = false )
 		string eventDesc = ItemFlavor_GetShortDescription( event )
 		                                         
 		int eventType  = ItemFlavor_GetType( event )
-		thread function() : ( hasSeenPersistenceVarNames, eventTitle, eventDesc, eventType )
+		thread function() : ( challengeDataForSeenPersistenceVarNames, eventTitle, eventDesc, eventType )
 		{
 			EndSignal( uiGlobal.signalDummy, "Lobby_ShowCallToActionPopup" )
 
@@ -4776,8 +4777,8 @@ bool function Lobby_ShowStoryEventChallengesPopup( bool forceShow = false )
 
 
 			  
-			foreach ( string varName in hasSeenPersistenceVarNames )
-				Remote_ServerCallFunction( "ClientCallback_MarkStoryEventChallengesPopupAsSeen", true, varName )
+			foreach ( StoryEventGroupChallengeData data in challengeDataForSeenPersistenceVarNames )
+				Remote_ServerCallFunction( "ClientCallback_MarkStoryEventChallengesPopupAsSeen", data.challengeGroupGuid, data.challengeBlockIndex )
 
 			thread CallToActionPopupThink( popup, 10.0 )
 		}()
@@ -4855,9 +4856,9 @@ void function CallToActionDialoguePopupThink( var popup, StoryEventDialogueData 
 		{
 			if ( results.hasSeen && !file.dialogFlowDidCausePotentiallyInterruptingPopup )
 			{
-				string str      = data.persistenceVarNameHasSeenOrNull != null ? expect string( data.persistenceVarNameHasSeenOrNull ) : ""
-				bool extraParam = data.persistenceVarNameHasSeenOrNull != null
-				Remote_ServerCallFunction( "ClientCallback_MarkStoryEventDialoguePopupAsSeen", extraParam, str )
+				int guid = data.dialogueGroupGuid
+				int index = data.dialogueBlockIndex
+				Remote_ServerCallFunction( "ClientCallback_MarkStoryEventDialoguePopupAsSeen", guid, index )
 			}
 
 			Hud_Hide( popup )
