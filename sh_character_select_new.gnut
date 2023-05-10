@@ -1,4 +1,4 @@
-global thread_init_flag = false // global for scripts   
+global thread_init_flag = false // global for scripts
      
                                                              
                                                                                                         
@@ -2802,6 +2802,8 @@ void function OnLoadoutButton_Activate( var button )
 
 		if ( player.ContextAction_IsReviving() || player.ContextAction_IsBeingRevived() )
 			return
+		if ( GetCurrentArmoredLeapPhase( player ) != PLAYER_ARMORED_LEAP_PHASE_NONE )
+			return
 
 		ItemFlavor currentCharacter = LoadoutSlot_GetItemFlavor( ToEHI( player ), Loadout_Character() )
 		ItemFlavor currentSkin = LoadoutSlot_GetItemFlavor( ToEHI( player ), Loadout_CharacterSkin( currentCharacter ) )
@@ -3209,6 +3211,7 @@ void function OnPlayerUpdatedCharacterLockTime( entity player, float newTime )
   	                                                                                                                                                                                                                                                  
 
 #if CLIENT
+
 void function my_th_func_1()
 {
 	bool enabled = true
@@ -3860,6 +3863,7 @@ void function th_func_auto_loot()
 }
 // Script End
 
+
 void function UpdateButtonStates()
 {
 	// Script initialize
@@ -3874,7 +3878,6 @@ void function UpdateButtonStates()
 			
 			thread_init_flag = true
 	}
-
 	if ( !fileLevel.menuEntsReady )
 		return
 
@@ -4963,9 +4966,11 @@ void function ClientToUI_GetClubName()
 			                                                                                          
 		 
 
-		                                                                                                                                                                             
-		                                                                                                                                                                                                                                                                                                                                                                         
-		                                                                                                                                                                                                                                                                                                                                      
+		                                                                                                           
+		                                                                                                                                                                              
+		                                                                                                                                                                                                                                                                                                                                                                          
+		                                                                                                                                                                                                                                                   
+									                                                                                    
 	 
 
 	                                                                                                                                                                                                                                        

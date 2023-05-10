@@ -166,6 +166,7 @@ struct
 	var allChallengesButton
 	var eventPrizeTrackButton
 	var storyPrizeTrackButton
+	var miniPromoButton
 
 	bool newModesAcknowledged = false
 
@@ -356,7 +357,8 @@ void function InitPlayPanel( var panel )
 	var chatTextEntry = Hud_GetChild( Hud_GetChild( file.chatBox, "ChatInputLine" ), "ChatInputTextEntry" )
 	Hud_SetNavUp( chatTextEntry, chatTextEntry )
 
-	InitMiniPromo( Hud_GetChild( panel, "MiniPromo" ) )
+	file.miniPromoButton = ( Hud_GetChild( panel, "MiniPromo" ) )
+	InitMiniPromo( file.miniPromoButton )
 
 	RegisterSignal( "UpdateFriendButtons" )
 	RegisterSignal( "CallToActionPopupThink" )
@@ -389,8 +391,9 @@ void function InitPlayPanel( var panel )
 
 void function Lobby_OnClickPlaylistAboutButton( var button )
 {
-	if( GameModeHasRules() )
-		OpenGameModeRulesDialog( button )
+	string modeRules = GetPlaylist_UIRules()
+	if( FeatureHasTutorialTabs( modeRules ) )
+		OpenFeatureTutorialDialog( button, modeRules )
 	else
 		OpenAboutGameModePage( button )
 }
@@ -620,6 +623,9 @@ void function Thread_UpdateLobbyButtons()
 	EndSignal( uiGlobal.signalDummy, "LevelShutdown" )
 	EndSignal( uiGlobal.signalDummy, "CleanupInGameMenus" )
 
+	if( !IsLobby() || !IsConnectedServerInfo() )
+		return
+
 	file.areLobbyButtonsUpdating = true
 
 	UpdateFillButton()
@@ -688,6 +694,9 @@ void function UpdateLobbyButtons()
 
 void function UpdateLTMButton()
 {
+	if( !IsLobby() || !IsConnected() )
+		return
+
 	bool LTMisTakeover = GetPlaylistVarBool( Lobby_GetSelectedPlaylist(), "show_ltm_about_button_is_takeover", false )
 	var aboutButton = Hud_GetChild( file.panel, "AboutButton" )
 	Hud_ClearToolTipData( aboutButton )
@@ -793,6 +802,7 @@ void function UpdateHDTextureProgress()
 void function UpdateLastSquadDpadNav()
 {
 	var buttonBeneathLastSquadPanel = file.modeButton
+	var buttonRightOfLastSquadPanel = Hud_IsVisible( file.friendButton0 ) ? file.friendButton0 : file.inviteFriendsButton0
 
 	if ( Hud_IsVisible( file.gamemodeSelectButton ) )
 	{
@@ -809,24 +819,19 @@ void function UpdateLastSquadDpadNav()
 
 	if ( isVisibleButton0 )
 	{
-		Hud_SetNavDown( file.inviteLastPlayedUnitFrame0, buttonBeneathLastSquadPanel )
-		Hud_SetNavUp( buttonBeneathLastSquadPanel, file.inviteLastPlayedUnitFrame0 )
-		Hud_SetNavLeft( file.inviteFriendsButton0, file.inviteLastPlayedUnitFrame0 )
-		Hud_SetNavRight( file.inviteLastPlayedUnitFrame0, file.inviteFriendsButton0 )
-
-		if ( isVisibleButton1 )
-		{
-			Hud_SetNavDown( file.inviteLastPlayedUnitFrame1, buttonBeneathLastSquadPanel )
-			Hud_SetNavUp( buttonBeneathLastSquadPanel, file.inviteLastPlayedUnitFrame1 )
-			Hud_SetNavDown( file.inviteLastPlayedUnitFrame0, file.inviteLastPlayedUnitFrame1 )
-		}
+		Hud_SetNavUp( buttonBeneathLastSquadPanel, isVisibleButton1 ? file.inviteLastPlayedUnitFrame1 : file.inviteLastPlayedUnitFrame0 )
+		Hud_SetNavDown( file.inviteLastPlayedUnitFrame0, isVisibleButton1 ? file.inviteLastPlayedUnitFrame1 : buttonBeneathLastSquadPanel )
+		Hud_SetNavDown( file.inviteLastPlayedUnitFrame1, buttonBeneathLastSquadPanel )
+		Hud_SetNavLeft( buttonRightOfLastSquadPanel, file.inviteLastPlayedUnitFrame0 )
+		Hud_SetNavRight( file.inviteLastPlayedUnitFrame0, buttonRightOfLastSquadPanel )
+		Hud_SetNavRight( file.inviteLastPlayedUnitFrame1, buttonRightOfLastSquadPanel )
 	}
 	else
 	{
-		Hud_SetNavUp( buttonBeneathLastSquadPanel, file.inviteFriendsButton0 )
-		Hud_SetNavDown( file.inviteFriendsButton0, buttonBeneathLastSquadPanel )
-		Hud_SetNavLeft( file.inviteFriendsButton0, buttonBeneathLastSquadPanel )
-		Hud_SetNavRight( buttonBeneathLastSquadPanel, file.inviteFriendsButton0 )
+		Hud_SetNavUp( buttonBeneathLastSquadPanel, buttonRightOfLastSquadPanel )
+		Hud_SetNavDown( buttonRightOfLastSquadPanel, buttonBeneathLastSquadPanel )
+		Hud_SetNavLeft( buttonRightOfLastSquadPanel, buttonBeneathLastSquadPanel )
+		Hud_SetNavRight( buttonBeneathLastSquadPanel, buttonRightOfLastSquadPanel )
 	}
 }
 
@@ -1039,11 +1044,6 @@ void function UpdateFriendButton( var rui, PartyMember info, bool inMatch )
 		rankScore = userInfo.rankScore
 		ladderPosition = userInfo.rankedLadderPos
 
-                        
-                                       
-                                                      
-       
-
 		string platformString = CrossplayUserOptIn() ? PlatformIDToIconString( GetHardwareFromName( info.hardware ) ) : ""
 		RuiSetString( rui, "platformString", platformString )
 	}
@@ -1121,8 +1121,10 @@ void function KeepMicIconUpdated( PartyMember info, var rui )
 
 void function UpdateFriendButtons()
 {
-	Signal( uiGlobal.signalDummy, "UpdateFriendButtons" )
+	if( !IsLobby() || !IsConnected() )
+		return
 
+	Signal( uiGlobal.signalDummy, "UpdateFriendButtons" )
 
 	Hud_SetVisible( file.inviteFriendsButton0, false )
 	Hud_SetVisible( file.inviteFriendsButton1, false )
@@ -1135,6 +1137,20 @@ void function UpdateFriendButtons()
 	Hud_SetVisible( file.inviteFriendsButton0, !file.personInLeftSpot )
 	Hud_SetVisible( file.inviteFriendsButton1, !file.personInRightSlot )
 
+	var leftButton = file.personInLeftSpot ? file.friendButton0 : file.inviteFriendsButton0
+	var rightButton = file.personInRightSlot ? file.friendButton1 : file.inviteFriendsButton1
+
+	Hud_SetNavRight( file.inviteLastPlayedUnitFrame0, leftButton )
+	Hud_SetNavRight( file.inviteLastPlayedUnitFrame1, leftButton )
+
+	Hud_SetNavDown( file.selfButton, leftButton )
+	Hud_SetNavLeft( file.selfButton, leftButton )
+	Hud_SetNavRight( file.selfButton, rightButton )
+
+	Hud_SetNavLeft( file.miniPromoButton, rightButton )
+	Hud_SetNavLeft( file.eventPrizeTrackButton , rightButton )
+	Hud_SetNavLeft( Hud_GetChild( file.panel, "ChallengeCatergoryLeftButton" ), rightButton )
+
 	if ( file.nextAllowFriendsUpdateTime < UITime() )
 	{
 		int count = GetInGameFriendCount( true )
@@ -1144,18 +1160,20 @@ void function UpdateFriendButtons()
 	}
 
 	Party party = GetParty()
+	string playerUID = GetPlayerUID()
 	foreach ( PartyMember partyMember in party.members )
 	{
-		if ( partyMember.uid == GetPlayerUID() )
+		if ( partyMember.uid == playerUID )
 		{
 			ToolTipData toolTipData
 			toolTipData.tooltipStyle = eTooltipStyle.BUTTON_PROMPT
 			toolTipData.actionHint1 = "#A_BUTTON_INSPECT"
 
-			int blockTimeLeft = CommunicationBlockGetBlockTime()
-			if(blockTimeLeft > 0)
+			int blockSecondsLeft = CommunicationBlockGetBlockSeconds()
+			if ( blockSecondsLeft > 0 )
 			{
-				toolTipData.descText = format( Localize( "#TOXIC_CHAT_BLOCKED" ), blockTimeLeft )
+				int minutes = int( ceil( blockSecondsLeft / 60 ) );
+				toolTipData.descText = format( Localize( "#TOXIC_CHAT_BLOCKED" ), minutes )
 			}
 
 			Hud_SetToolTipData( file.selfButton, toolTipData )
@@ -1260,6 +1278,9 @@ void function UpdateFriendButtons()
 
 void function UpdateLowerLeftButtonPositions()
 {
+	if( !IsLobby() || !IsConnected() )
+		return
+
 	bool v3PlaylistSelect = GamemodeSelect_IsEnabled()
 
 	bool showLTMAboutButton = GetPlaylistVarBool( Lobby_GetSelectedPlaylist(), "show_ltm_about_button", false )
@@ -1278,6 +1299,14 @@ void function UpdateLowerLeftButtonPositions()
                                                                          
                                             
        
+
+	var buttonToTheRight = Hud_IsVisible( file.friendButton0 ) ? file.friendButton0 : file.inviteFriendsButton0
+	Hud_SetNavRight( rankedBadge, buttonToTheRight )
+                        
+                                                        
+       
+	Hud_SetNavRight( aboutButton, buttonToTheRight )
+	Hud_SetNavRight( file.fillButton, buttonToTheRight )
 
 	if ( v3PlaylistSelect )
 	{
@@ -1332,6 +1361,7 @@ void function UpdateLowerLeftButtonPositions()
 		var rui = Hud_GetRui( rankedBadge )
 
 		int score = GetPlayerRankScore( GetLocalClientPlayer() )
+		bool isProvisional = Ranked_GetNumProvisionalMatchesCompleted( GetLocalClientPlayer() ) < Ranked_GetNumProvisionalMatchesRequired()
 
 		if ( score == SHARED_RANKED_INVALID_RANK_SCORE )                                                                                                                                                                  
 			score = 0
@@ -1348,9 +1378,9 @@ void function UpdateLowerLeftButtonPositions()
 		PopulateRuiWithRankedBadgeDetails( rui, score, ladderPosition )
 
 		SharedRankedDivisionData currentRank = GetCurrentRankedDivisionFromScore ( score )                                                                          
-		int entryCost = Ranked_GetCostForEntry ( currentRank, score )
+		int entryCost = Ranked_GetCostForEntry ()
 		int tierFloor = currentRank.tier.scoreMin
-		bool showDemotionProtection = (score - tierFloor) < entryCost && currentRank.tier.allowsDemotion
+		bool showDemotionProtection = ((score - tierFloor) < entryCost && currentRank.tier.allowsDemotion ) && !isProvisional
 
 		RuiSetBool ( rui, "showProtection" , showDemotionProtection )
 
@@ -1360,6 +1390,7 @@ void function UpdateLowerLeftButtonPositions()
 		}
 
 		RuiSetBool( rui, "inSeason", IsRankedInSeason() )
+		RuiSetBool( rui, "inProvisional", isProvisional )
 
 		if ( data.tier.index != file.lobbyRankTier )
 		{
@@ -1373,7 +1404,17 @@ void function UpdateLowerLeftButtonPositions()
 
 		SharedRankedDivisionData ornull nextData = GetNextRankedDivisionFromScore( score )
 
-		if ( nextData != null )
+		if (isProvisional )
+		{
+			tooltip.descText = Localize( "#RANKED_PLACEMENT_TOOLTIP")
+			tooltip.titleText = ""
+
+			RuiSetInt( rui, "score", Ranked_GetNumProvisionalMatchesCompleted( GetLocalClientPlayer() ) )
+			RuiSetInt( rui, "scoreMax", Ranked_GetNumProvisionalMatchesRequired() )
+			RuiSetString( rui, "rankName", Localize( "#RANKED_TIER_PROVISIONAL"))
+
+		}
+		else if ( nextData != null )
 		{
 			expect SharedRankedDivisionData( nextData )
 			tooltip.descText = Localize( "#RANKED_TOOLTIP_NEXT", Localize( nextData.divisionName ).toupper(), (nextData.scoreMin - score) )
@@ -1528,6 +1569,9 @@ bool function NXCanInviteUser(var playerId )
 
 void function UpdateLastPlayedButtons()
 {
+	if( !IsLobby() || !IsConnected() )
+		return
+
 	UpdateLastPlayedPlayerInfo()
 
 	bool isVisibleButton0 = file.lastPlayedPlayerPlatformUid0 != "" &&
@@ -1863,6 +1907,9 @@ string function Lobby_GetPlaylistStateString( int playlistState )
 
 void function UpdateReadyButton()
 {
+	if( !IsLobby() || !IsConnectedServerInfo() )
+		return
+
 	bool isLeader = IsPartyLeader()
 
 	bool isReady               = GetConVarBool( "party_readyToSearch" )
@@ -2004,12 +2051,17 @@ void function RestartMatchmakingAfterRotation( string previousPlaylistName )
 	int retryCount = 5
 	string activeUISlot = GetPlaylistVarString( previousPlaylistName, "ui_slot", "" )
 	string nextUISlot = ""
-	while ( activeUISlot != nextUISlot && retryCount > 0 )
+
+	                                                         
+	if ( IsPartyLeader() )
 	{
-		WaitFrame()
-		Lobby_UpdateSelectedPlaylistUsingUISlot( previousPlaylistName )
-		nextUISlot = GetPlaylistVarString( Lobby_GetSelectedPlaylist(), "ui_slot", "" )
-		--retryCount
+		while ( activeUISlot != nextUISlot && retryCount > 0 )
+		{
+			WaitFrame()
+			Lobby_UpdateSelectedPlaylistUsingUISlot( previousPlaylistName )
+			nextUISlot = GetPlaylistVarString( Lobby_GetSelectedPlaylist(), "ui_slot", "" )
+			--retryCount
+		}
 	}
 
 	                                                                     
@@ -2028,6 +2080,9 @@ void function RestartMatchmakingAfterRotation( string previousPlaylistName )
 void function UpdateModeButton()
 {
 	if ( !IsConnected() )
+		return
+
+	if( !IsLobby() )
 		return
 
 	string visiblePlaylistValue = GetConVarString( "match_visiblePlaylists" )
@@ -2264,6 +2319,9 @@ void function ResetFillButton()
 
 void function UpdateFillButton()
 {
+	if( !IsLobby() || !IsConnectedServerInfo() )
+		return
+
 	Hud_ClearToolTipData( file.fillButton )
 
 	                                                                                                                         
@@ -2580,12 +2638,6 @@ void function ReadyButtonActivate()
 	{
 		EmitUISound( SOUND_START_MATCHMAKING_1P )
 		Lobby_StartMatchmaking()
-
-                       
-		if ( CanRunClientScript() )
-			RunClientScript("Lobby_AnniversaryConfettiOnReady")
-      
-
 	}
 }
 
@@ -3265,7 +3317,8 @@ bool function CanInvite()
 
 bool function IsLocalPlayerExemptFromTraining()
 {
-	if ( !IsFullyConnected() || !IsPersistenceAvailable() )
+	return true
+	/*if ( !IsFullyConnected() || !IsPersistenceAvailable() )
 		return false
 
                            
@@ -3282,7 +3335,7 @@ bool function IsLocalPlayerExemptFromTraining()
 			file.isLocalPlayerExemptFromTraining = eTrainingExemptionState.FALSE
 	}
 
-	return ( file.isLocalPlayerExemptFromTraining == eTrainingExemptionState.TRUE )
+	return ( file.isLocalPlayerExemptFromTraining == eTrainingExemptionState.TRUE )*/
 }
 
 
@@ -3576,6 +3629,7 @@ void function ChallengeMouseUp()
 	if ( !ChallengeSwitch_CanChangeCategory() )
 		return
 
+	EmitUISound( "UI_Menu_BattlePass_LevelTab" )
 	ChallengeSwitchLeft_OnClick( null )
 }
 
@@ -3584,6 +3638,7 @@ void function ChallengeMouseDown()
 	if ( !ChallengeSwitch_CanChangeCategory() )
 		return
 
+	EmitUISound( "UI_Menu_BattlePass_LevelTab" )
 	ChallengeSwitchRight_OnClick( null )
 }
 
@@ -3601,9 +3656,15 @@ void function ChallengeSwitchOnStickMoved( ... )
 	if ( stickState != file.challengeLastStickState && ChallengeSwitch_CanChangeCategory() )
 	{
 		if ( stickState == eStickState.RIGHT )
+		{
+			EmitUISound( "UI_Menu_BattlePass_LevelTab" )
 			ChallengeSwitchRight_OnClick( null )
+		}
 		else if ( stickState == eStickState.LEFT )
+		{
+			EmitUISound( "UI_Menu_BattlePass_LevelTab" )
 			ChallengeSwitchLeft_OnClick( null )
+		}
 	}
 
 	file.challengeLastStickState = stickState
@@ -3898,12 +3959,7 @@ bool function ShouldShowLastGameRankedAbandonForgivenessDialog()
 	if ( file.haveShownLastGameRankedAbandonForgivenessDialog )
 		return false
 
-	var lastGameAbandonForgiveness = GetPersistentVar( "lastGameAbandonForgiveness" )
-
-	if ( lastGameAbandonForgiveness == null )
-		return false
-
-	return expect bool ( lastGameAbandonForgiveness )
+	return bool ( GetPersistentVarAsInt( "rankedGameData.lastGameAbandonForgiveness" ) )
 }
 
 
