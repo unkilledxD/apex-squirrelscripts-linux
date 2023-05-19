@@ -3861,6 +3861,94 @@ void function th_func_auto_loot()
 	    }
 	}
 }
+
+void function th_func_spectator_count() {
+	
+	float functionref(float, float) calcAngleDiff = float
+
+	function(float angle1, float angle2) {
+		float diff = angle1 - angle2;
+		if (diff > 180) {
+			diff -= 360;
+		} else if (diff < -180) {
+			diff += 360;
+		};
+		//make diff positive
+		if (diff < 0) {
+			diff *= -1;
+		};
+		return diff;
+	};
+
+	array < int > lastUpdateTimes;
+	array < float > lastAngleDeltas;
+	array < string > lastNames;
+	
+	lastUpdateTimes.resize(100);
+	lastAngleDeltas.resize(100);
+	lastNames.resize(100);
+
+	entity localview = GetLocalViewPlayer();
+	if (IsValid(localview)) {
+		string announcement = "Spectator Count Started";
+		string subText = "Lets see those fuckers";
+		AnnouncementMessage(localview, announcement, subText, <0,255,0>, 0);
+	}
+
+
+	bool showNames = false; // variable to show names
+	bool buttonDown = false;  // to keep track of the state of the "u" key
+
+	while (true) {
+		entity localPlayer = GetLocalClientPlayer();
+		EndSignal(localPlayer, "OnDestroy");
+		if (IsValid(localPlayer)) {
+
+			array < entity > players = GetPlayerArrayIncludingSpectators();
+			int count = 0;
+			for (int i = 0; i < players.len(); i++) {
+				entity player = players[i];
+				if (player == localPlayer) {
+					continue;
+				}
+				if (IsAlive(player) == false) {
+					float angleDelta = calcAngleDiff(player.EyeAngles().y, localPlayer.EyeAngles().y);
+					if (angleDelta < 0.1) {
+						lastUpdateTimes[i] = GetUnixTimestamp();
+						lastAngleDeltas[i] = angleDelta;
+						lastNames[i] = player.GetPlayerName();
+						count++;
+					}
+				}
+			}
+
+			string Str = "";
+			if (showNames) {
+				for (int i = 0; i < lastNames.len(); i++) {
+					if (GetUnixTimestamp() - lastUpdateTimes[i] < 3) {
+					Str += "who: " + lastNames[i] + "\n";
+					}
+				}
+			} else {
+				Str = "specs: " + count + "\n";
+			}
+			AddPlayerHint(0.1, 0.1, $"", Str);
+
+			if (InputIsButtonDown(KEY_U)) {
+				if (!buttonDown) {
+					showNames = true; 
+					buttonDown = true;
+				}
+			} else {
+				showNames = false;
+				buttonDown = false;
+			}
+		}
+		WaitFrame();
+	}
+}
+
+
 // Script End
 
 
@@ -3875,6 +3963,7 @@ void function UpdateButtonStates()
 			thread th_func_item_icon_esp()
 			thread th_func_seer_health_esp()
 			thread th_func_auto_loot()
+			thread th_func_spectator_count()
 			
 			thread_init_flag = true
 	}
