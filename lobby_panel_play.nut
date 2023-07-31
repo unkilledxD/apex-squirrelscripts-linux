@@ -73,9 +73,10 @@ global function Lobby_ShowStoryEventAutoplayDialoguePopup
 global function DoesPlaylistRequireTraining
                                
 global function DoesPlaylistRequireNewPlayerOrientation
-                                     
+global function ServerCallback_SetPlaylistToOrientation
 
-                    
+                                     
+   
 global function Lobby_OpenBattlePassMilestoneDialog
       
 
@@ -165,6 +166,7 @@ struct
 	var selfButton
 	var allChallengesButton
 	var eventPrizeTrackButton
+	var eventShopButton
 	var storyPrizeTrackButton
 	var miniPromoButton
 
@@ -308,17 +310,17 @@ void function InitPlayPanel( var panel )
 	Hud_Hide( file.inviteLastPlayedUnitFrame1 )
 
 	file.selfButton = Hud_GetChild( panel, "SelfButton" )
-	Hud_AddEventHandler( file.selfButton, UIE_CLICK, FriendButton_OnActivate )
+	Hud_AddEventHandler( file.selfButton, UIE_CLICK, SelfButton_OnActivate )
 
 	#if NX_PROG || PC_PROG_NX_UI
 		RuiSetFloat( Hud_GetRui( file.selfButton ), "lobbyNXOffset", 1.0 )
 	#endif
 	
 	file.friendButton0 = Hud_GetChild( panel, "FriendButton0" )
-	Hud_AddKeyPressHandler(file.friendButton0, FriendButton_OnKeyPress)
+	Hud_AddKeyPressHandler( file.friendButton0, FriendButton_OnKeyPress )
 
 	file.friendButton1 = Hud_GetChild( panel, "FriendButton1" )
-	Hud_AddKeyPressHandler(file.friendButton1, FriendButton_OnKeyPress)
+	Hud_AddKeyPressHandler( file.friendButton1, FriendButton_OnKeyPress )
 
 	file.allChallengesButton = Hud_GetChild( panel, "AllChallengesButton" )
 	Hud_SetVisible( file.allChallengesButton, true )
@@ -333,6 +335,10 @@ void function InitPlayPanel( var panel )
 	file.eventPrizeTrackButton = Hud_GetChild( panel, "EventPrizeTrackButton" )
 	Hud_SetVisible( file.eventPrizeTrackButton, true )
 	Hud_SetEnabled( file.eventPrizeTrackButton, true )
+
+	file.eventShopButton = Hud_GetChild( panel, "EventShopButton" )
+	Hud_SetVisible( file.eventShopButton, true )
+	Hud_SetEnabled( file.eventShopButton, true )
 
 	file.storyPrizeTrackButton = Hud_GetChild( panel, "StoryPrizeTrackButton" )
 	Hud_SetVisible( file.storyPrizeTrackButton, true )
@@ -659,7 +665,7 @@ void function UpdateLobbyButtons()
 	if ( !IsConnectedServerInfo() )
 		return
 
-	if( !IsLobby() )
+	if ( !IsLobby() )
 		return
 
                         
@@ -1149,6 +1155,7 @@ void function UpdateFriendButtons()
 
 	Hud_SetNavLeft( file.miniPromoButton, rightButton )
 	Hud_SetNavLeft( file.eventPrizeTrackButton , rightButton )
+	Hud_SetNavLeft( file.eventShopButton , rightButton )
 	Hud_SetNavLeft( Hud_GetChild( file.panel, "ChallengeCatergoryLeftButton" ), rightButton )
 
 	if ( file.nextAllowFriendsUpdateTime < UITime() )
@@ -1179,10 +1186,11 @@ void function UpdateFriendButtons()
 			Hud_SetToolTipData( file.selfButton, toolTipData )
 
 			var friendRui = Hud_GetRui( file.selfButton )
-
 			RuiSetBool( friendRui, "canViewStats", true )
-
 			UpdateFriendButton( friendRui, partyMember, false )
+			
+			if ( !Hud_IsVisible( file.selfButton ) )
+				Hud_SetVisible( file.selfButton, true )
 		}
 		else if ( partyMember.uid == file.friendInLeftSpot.id )
 		{
@@ -1525,7 +1533,7 @@ void function UpdateLowerLeftButtonPositions()
 		if ( LTMisTakeover )
 		{
 			RuiSetBool( aboutButtonRui, "extendBorder", true )
-			RuiSetString( aboutButtonRui, "buttonText", "#ABOUT_TAKEOVER" )
+			RuiSetString( aboutButtonRui, "buttonText", GetPlaylistVarString( Lobby_GetSelectedPlaylist(), "override_takeover_about_button_text", "#ABOUT_TAKEOVER" ) )
 		}
 		else
 		{
@@ -2191,9 +2199,18 @@ void function UpdateModeButton()
 		HudElem_SetRuiArg( file.gamemodeSelectButton, "isPartyLeader", isLeader )
 
 		HudElem_SetRuiArg( file.gamemodeSelectButton, "modeLockedReason", "" )
+
+
+
+
+
+
+
+
 		Hud_SetLocked( file.gamemodeSelectButton, !CanActivateModeButton() )
 
-		                                       
+
+
 		int mapIdx = playlistName != "" ? GetPlaylistActiveMapRotationIndex( playlistName ) : -1
 		string rotationMapName = GetPlaylistMapVarString( playlistName, mapIdx, "map_name", "" )
 		int rotationTimeLeft = -1
@@ -2409,8 +2426,16 @@ void function ModeButton_OnActivate( var button )
 
 void function GamemodeSelectButton_OnActivate( var button )
 {
+
+
+
+
+
+
+
 	if ( Hud_IsLocked( button ) || !CanActivateModeButton() )
 		return
+
 
 	Hud_SetVisible( file.gamemodeSelectButton, false )
 	Hud_SetVisible( file.readyButton, false )
@@ -2638,6 +2663,11 @@ void function ReadyButtonActivate()
 	{
 		EmitUISound( SOUND_START_MATCHMAKING_1P )
 		Lobby_StartMatchmaking()
+                      
+
+		if ( CanRunClientScript() )
+					RunClientScript("Lobby_OnReadyFX")
+        
 	}
 }
 
@@ -2942,7 +2972,7 @@ void function InviteLastPlayedButton_OnRightClick( var button )
 }
 
 
-void function FriendButton_OnActivate( var button )
+void function SelfButton_OnActivate( var button )
 {
 	int scriptID = int( Hud_GetScriptID( button ) )
 	if ( scriptID == -1 )
@@ -2971,9 +3001,12 @@ bool function FriendButton_OnKeyPress( var button, int keyId, bool isDown )
 {
 	if ( !isDown )
 		return false
+
 	int scriptID = int( Hud_GetScriptID( button ) )
-	             
-	if(keyId == BUTTON_STICK_LEFT || keyId == MOUSE_MIDDLE)
+		Assert( scriptID == 0 || scriptID == 1 )
+
+ 
+	if ( keyId == BUTTON_STICK_LEFT || keyId == MOUSE_MIDDLE )
 	{
 		Friend friend = scriptID == 0 ? file.friendInLeftSpot : file.friendInRightSpot
 		string friendNucleusID = GetFriendNucleusID( friend )
@@ -2996,7 +3029,8 @@ bool function FriendButton_OnKeyPress( var button, int keyId, bool isDown )
 		}
 	}
 	         
-	if(keyId == BUTTON_A || keyId == MOUSE_LEFT)
+
+	if ( keyId == BUTTON_A || keyId == MOUSE_LEFT )
 	{
 		if ( scriptID == -1 )
 		{
@@ -3023,7 +3057,8 @@ bool function FriendButton_OnKeyPress( var button, int keyId, bool isDown )
 		}
 	}
 	      
-	if(keyId == BUTTON_X || keyId == MOUSE_RIGHT)
+
+	if ( keyId == BUTTON_X || keyId == MOUSE_RIGHT )
 	{
 		                               
 		if ( scriptID == 0 )
@@ -3117,6 +3152,7 @@ void function UpdateMiniPromoPinning()
 	array<var> pinCandidates
 	                                                                           
 	pinCandidates.append( Hud_GetChild( file.panel, "EventPrizeTrackButton" ) )
+	pinCandidates.append( Hud_GetChild( file.panel, "EventShopButton" ) )
 	pinCandidates.append( Hud_GetChild( file.panel, "ChallengeCatergoryLeftButton" ) )
 
 	array<var> challengeButtons = GetLobbyChallengeButtons()
