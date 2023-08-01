@@ -23,6 +23,7 @@ autoloot (Usage: Press F2 For On/Off)  ( disabled by default)
   
   
 [implementation]  
+
 Download "Titanfall_VPKTool3.4_Portable.zip" from https://noskill.gitbook.io/titanfall2/intro/duction/tools  
   
 Open "englishclient_frontend.bsp.pak000_dir.vpk" in "...../Steam/steamapps/common/Apex Legends/vpk/" with the downloaded "Titalfall VPK Tool", extract all (delete the log file)  
@@ -36,10 +37,13 @@ Repack with Tools -> Repack
 Rename the generated vpk file to "client_frontend.bsp.pak000_000.vpk" and the _dir.vpk file to "englishclient_frontend.bsp.pak000_dir.vpk"
 
 [Usage]
+
 Move the two generated files back to "...../Steam/steamapps/common/Apex Legends/vpk/" 
-and delete thoe files after loading into the lobby ( because apex has implemented file check and it will force close if you didn't remove those files )
+
+and delete those files after loading into the lobby ( because apex has implemented file check and it will force close if you didn't remove those files )
 
 ** auto moving **
+
 you can use the provided script it will auto delete the files after loading into apex (not using timelimit but by using process detection)
 
 to use the script you need to create directory and add the 2 vpk files with the python script and run the script by: python3 ./inject.py 
