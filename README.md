@@ -14,8 +14,6 @@ item icon ESP (Usage: Press F3 For On/Off)
 seer health ESP  
 autoloot (Usage: Press F2 For On/Off)  
 
-tutorial and orientation matches bypass (works by default)
-
 basic glow with outline
   
   
