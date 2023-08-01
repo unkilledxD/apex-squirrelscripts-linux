@@ -9,6 +9,7 @@ Updated Squirrel scripts for linux only!
 (original -> https://www.unknowncheats.me/forum/apex-legends/505139-apex-squirrel-scripts.html)  
 
 by default those features  are enabled:
+
 fullmap radar  
 minimap radar  
 seer health ESP  
