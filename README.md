@@ -16,7 +16,9 @@ seer health ESP
 basic glow with outline
 
 TriggerBot (Usage: On/Off = F4, Activation = Mouse 4)  ( enabled by default)
+
 item icon ESP (Usage: Press F3 For On/Off)  ( disabled by default)
+
 autoloot (Usage: Press F2 For On/Off)  ( disabled by default)
   
   
